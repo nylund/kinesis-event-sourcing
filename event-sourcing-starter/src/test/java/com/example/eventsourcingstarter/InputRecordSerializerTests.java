@@ -1,5 +1,7 @@
-package com.example.eventsourcing;
+package com.example.eventsourcingstarter;
 
+import com.example.eventsourcingstarter.InputRecord;
+import com.example.eventsourcingstarter.InputRecordDeserializer;
 import com.example.eventsourcingstarter.JsonMapper;
 import org.junit.Test;
 

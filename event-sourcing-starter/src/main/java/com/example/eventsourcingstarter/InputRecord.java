@@ -1,4 +1,4 @@
-package com.example.eventsourcing;
+package com.example.eventsourcingstarter;
 
 import lombok.Data;
 

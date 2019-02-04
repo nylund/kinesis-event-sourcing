@@ -1,4 +1,4 @@
-package com.example.eventsourcing;
+package com.example.eventsourcingstarter;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;

@@ -11,17 +11,20 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.ShutdownReason;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.amazonaws.services.kinesis.metrics.impl.NullMetricsFactory;
 import com.amazonaws.services.kinesis.model.Record;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Created by corrupt on 02/02/2019.
@@ -32,10 +35,10 @@ public class KinesisReader<T> {
     private static final String SAMPLE_APPLICATION_NAME = "SampleKinesisApplication";
 
     private Function<String, T> jsonMapFunc;
-    private Consumer<T> opFunc;
+    private Consumer<List<T>> opFunc;
 
-    public KinesisReader(Class<T> type, Consumer<T> opFunc) {
-        jsonMapFunc = new JsonMapper<>(type).get();
+    public KinesisReader(Class<T> type, Consumer<List<T>> opFunc, StdDeserializer<T> jsonDeserialiser) {
+        jsonMapFunc = new JsonMapper<>(type, jsonDeserialiser).get();
         this.opFunc = opFunc;
     }
 
@@ -86,7 +89,7 @@ public class KinesisReader<T> {
             @Override
             public void processRecords(List<Record> list, IRecordProcessorCheckpointer iRecordProcessorCheckpointer) {
 
-                list.stream()
+                List<T> processed = list.stream()
                     .map(record -> {
                         try {
                             return decoder.decode(record.getData()).toString();
@@ -96,7 +99,10 @@ public class KinesisReader<T> {
                     })
                     .filter(Objects::nonNull)
                     .map(jsonMapFunc)
-                    .forEach(opFunc);
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toCollection(ArrayList::new));
+
+                opFunc.accept(processed);
             }
 
             @Override
