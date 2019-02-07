@@ -32,7 +32,7 @@ public class JsonMapper<T> {
         this.deserializer = deserializer;
 
         SimpleModule module =
-            new SimpleModule("CustomCarDeserializer",
+            new SimpleModule(type.getName(),
             new Version(1, 0, 0, null, null, null));
         module.addDeserializer(type, deserializer);
         objectMapper.registerModule(module);

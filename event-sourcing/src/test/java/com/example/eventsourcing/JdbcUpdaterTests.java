@@ -1,8 +1,8 @@
-package com.example.eventsourcingstarter;
+package com.example.eventsourcing;
 
+import com.example.eventsourcingstarter.InputRecord;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mvnsearch.h2.H2FunctionsLoader;
 import org.springframework.jdbc.core.JdbcTemplate;

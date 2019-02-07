@@ -1,5 +1,6 @@
-package com.example.eventsourcingstarter;
+package com.example.eventsourcing;
 
+import com.example.eventsourcingstarter.InputRecord;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -30,6 +31,8 @@ public class JdbcUpdater {
                 ";";
 
         return (records) -> {
+
+            records.forEach(record -> log.debug("Updating record " + record));
 
             jdbcTemplate.batchUpdate(upsertQuery, new BatchPreparedStatementSetter() {
                 @Override

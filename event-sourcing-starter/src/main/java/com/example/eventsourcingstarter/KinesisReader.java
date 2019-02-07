@@ -1,11 +1,8 @@
 package com.example.eventsourcingstarter;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.ShutdownReason;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
@@ -13,53 +10,35 @@ import com.amazonaws.services.kinesis.metrics.impl.NullMetricsFactory;
 import com.amazonaws.services.kinesis.model.Record;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * Created by corrupt on 02/02/2019.
- */
-public class KinesisReader<T> {
-
-    public static final String SAMPLE_APPLICATION_STREAM_NAME = "test-input-stream-1";
-    private static final String SAMPLE_APPLICATION_NAME = "SampleKinesisApplication";
+class KinesisReader<T> {
 
     private Function<String, T> jsonMapFunc;
     private Consumer<List<T>> opFunc;
 
-    public KinesisReader(Class<T> type, Consumer<List<T>> opFunc, StdDeserializer<T> jsonDeserialiser) {
+    KinesisClientLibConfiguration kinesisClientLibConfiguration;
+
+    private Worker worker;
+
+    KinesisReader(KinesisClientLibConfiguration kinesisClientLibConfiguration, Class<T> type, Consumer<List<T>> opFunc, StdDeserializer<T> jsonDeserialiser) {
         jsonMapFunc = new JsonMapper<>(type, jsonDeserialiser).get();
         this.opFunc = opFunc;
+        this.kinesisClientLibConfiguration = kinesisClientLibConfiguration;
     }
 
-    public void init() throws UnknownHostException {
-        AWSCredentialsProvider credentialsProvider = new EnvironmentVariableCredentialsProvider();
-        String workerId = InetAddress.getLocalHost().getCanonicalHostName() + ":" + UUID.randomUUID();
-
-        KinesisClientLibConfiguration kinesisClientLibConfiguration =
-                new KinesisClientLibConfiguration(SAMPLE_APPLICATION_NAME,
-                        SAMPLE_APPLICATION_STREAM_NAME,
-                        credentialsProvider,
-                        workerId)
-                .withKinesisEndpoint("http://localhost:4568")
-                .withDynamoDBEndpoint("http://localhost:4569")
-                .withRegionName("us-east-1");
-
-
-        kinesisClientLibConfiguration.withInitialPositionInStream(InitialPositionInStream.LATEST);
-
+    void init() {
         IRecordProcessorFactory recordProcessorFactory = getProcessorFactory();
-        Worker worker = new Worker(recordProcessorFactory, kinesisClientLibConfiguration, new NullMetricsFactory());
+        worker = new Worker(recordProcessorFactory, kinesisClientLibConfiguration, new NullMetricsFactory());
 
         int exitCode = 0;
         try {
@@ -71,8 +50,18 @@ public class KinesisReader<T> {
         }
     }
 
+    void shutdown() {
+        try {
+            worker.startGracefulShutdown().get();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
     private IRecordProcessorFactory getProcessorFactory() {
-        return () -> getProcessor();
+        return this::getProcessor;
     }
 
     private IRecordProcessor getProcessor() {
